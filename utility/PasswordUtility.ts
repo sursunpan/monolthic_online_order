@@ -1,4 +1,9 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { Request, Response } from "express";
+import { VendorPayload } from "../dto";
+import { APP_SECRET } from "../config";
+import { AuthPayload } from "../dto/auth.dto";
 
 export const GenerateSalt = async (): Promise<string> => {
   try {
@@ -15,6 +20,46 @@ export const GeneratePassword = async (
 ): Promise<string> => {
   try {
     return await bcrypt.hash(password, salt);
+  } catch (err: any) {
+    console.log("====================error in geneSalt==============", err);
+    return err;
+  }
+};
+
+export const ValidatePassword = async (
+  enterPassword: string,
+  savedPassword: string,
+  salt: string
+) => {
+  try {
+    return (await GeneratePassword(enterPassword, salt)) === savedPassword;
+  } catch (err: any) {
+    console.log("====================error in geneSalt==============", err);
+    return err;
+  }
+};
+
+export const GenerateSignature = async (payload: VendorPayload) => {
+  try {
+    return jwt.sign(payload, APP_SECRET, { expiresIn: "1d" });
+  } catch (err: any) {
+    console.log("====================error in geneSalt==============", err);
+    return err;
+  }
+};
+
+export const ValidateSignature = async (req: Request) => {
+  try {
+    const signature = req.get("Authorization");
+    if (signature === undefined) {
+      throw new Error("User not authorize");
+    }
+    const payload = jwt.verify(
+      signature.split(" ")[1],
+      APP_SECRET
+    ) as AuthPayload;
+    req.user = payload;
+    return true;
   } catch (err: any) {
     console.log("====================error in geneSalt==============", err);
     return err;
