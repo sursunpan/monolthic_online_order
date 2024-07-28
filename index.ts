@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import { AdminRoute, VendorRoute } from "./routes";
@@ -9,6 +10,7 @@ const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use("/images", express.static(path.join(__dirname, "images")));
 mongoose
   .connect(MONGO_URI)
   .then((result) => {
