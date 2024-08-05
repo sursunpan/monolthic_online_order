@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { FoodDoc, Vendor } from "../models";
-import { ReturnData } from "../utility/statusCode";
+import { FoodDoc, OfferModel, Vendor } from "../models";
+import { ReturnData, ServerError } from "../utility/statusCode";
 
 export const GetFoodAvailability = async (
   req: Request,
@@ -112,5 +112,16 @@ export const RestaurantById = async (
       error: true,
       message: err.message,
     });
+  }
+};
+
+export const GetAvailableOffers = async (req: Request, res: Response) => {
+  try {
+    const pincode = req.params.pincode;
+    const offers = await OfferModel.find({ pincode: pincode, isActive: true });
+
+    return ReturnData({ offers }, res);
+  } catch (err: any) {
+    return ServerError(err.message, res);
   }
 };

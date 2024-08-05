@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   AddToCart,
   CreateOrder,
+  CreatePayment,
   CustomerLogin,
   CustomerSignUp,
   CustomerVerify,
@@ -12,6 +13,7 @@ import {
   GetOrder,
   GetOrders,
   RequestOtp,
+  VerifyOffer,
 } from "../controllers";
 import { Authenticate } from "../middlewares";
 
@@ -24,12 +26,16 @@ router.get("/otp", Authenticate, RequestOtp);
 router.get("/profile", Authenticate, GetCustomerProfile);
 router.patch("/profile", Authenticate, EditCustomerProfile);
 
-router.post("/cart", AddToCart);
-router.get("/cart", GetCart);
-router.delete("/cart", DeleteCart);
+router.post("/cart", Authenticate, AddToCart);
+router.get("/cart", Authenticate, GetCart);
+router.delete("/cart", Authenticate, DeleteCart);
+
+router.get("/offer/verify/:id", Authenticate, VerifyOffer);
 
 router.post("/create-order", Authenticate, CreateOrder);
 router.post("/orders", Authenticate, GetOrders);
 router.get("/order/:id", Authenticate, GetOrder);
+
+router.post("/create-payment", Authenticate, CreatePayment);
 
 export { router as CustomerRoute };

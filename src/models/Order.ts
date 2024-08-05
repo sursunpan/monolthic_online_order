@@ -5,14 +5,11 @@ export interface OrderDoc extends Document {
   vendorId: string;
   items: [any];
   totalAmount: number;
+  paidAmount: number;
   orderDate: Date;
-  paidThrough: string;
-  paymentResponse: string;
   orderStauts: string;
   remarks: string;
   deliveryId: string;
-  appliedOffers: boolean;
-  offerId: string;
   readyTime: number;
 }
 
@@ -27,14 +24,11 @@ const OrderSchema = new Schema(
       },
     ],
     totalAmount: { type: Number, required: true },
+    paidAmount: Number,
     OrderDate: Date,
-    paidThrough: String,
-    paymentResponse: String,
     orderStatus: String,
     remarks: String,
     deliveryId: String,
-    appliedOffers: Boolean,
-    offerId: String,
     readyTime: Number,
   },
   {

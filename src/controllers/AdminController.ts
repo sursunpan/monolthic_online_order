@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { CreateVendorInput } from "../dto";
-import { Vendor } from "../models";
-import { GeneratePassword, GenerateSalt } from "../utility";
+import { Transaction, Vendor } from "../models";
+import {
+  GeneratePassword,
+  GenerateSalt,
+  NotFound,
+  ReturnData,
+  ServerError,
+} from "../utility";
 
 export const CreateVendor = async (
   req: Request,
@@ -102,5 +108,28 @@ export const GetVendorById = async (
       error: true,
       message: err.message,
     });
+  }
+};
+
+export const GetTransactions = async (req: Request, res: Response) => {
+  try {
+    const transactions = await Transaction.find({});
+    return ReturnData({ transactions }, res);
+  } catch (err: any) {
+    return ServerError(err.message, res);
+  }
+};
+
+export const GetTransactionById = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const transaction = await Transaction.findById(id);
+    if (transaction === null) {
+      return NotFound("No such transcation happen", res);
+    }
+
+    return ReturnData({ transaction }, res);
+  } catch (err: any) {
+    return ServerError(err.message, res);
   }
 };

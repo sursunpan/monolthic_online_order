@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { plainToClass } from "class-transformer";
 import {
+  CartItem,
   CreateCustomerInputs,
   EditCustomerProfileInput,
   OrderInputs,
@@ -15,7 +16,7 @@ import {
   onRequestOTP,
   ValidatePassword,
 } from "../utility";
-import { Customer, Food } from "../models";
+import { Customer, Food, OfferModel, Transaction } from "../models";
 import {
   AuthenticateError,
   NotFound,
@@ -327,7 +328,7 @@ export const AddToCart = async (
     if (profile === null) return NotFound("No Such customer is found!!", res);
 
     let cartItems = Array();
-    const { _id, unit } = <OrderInputs>req.body;
+    const { _id, unit } = <CartItem>req.body;
 
     const food = await Food.findById(_id);
     if (food === null) return NotFound("No Such Food Items is found!!", res);
@@ -420,19 +421,29 @@ export const CreateOrder = async (
       });
     }
 
+    const { txnId, amount, items } = <OrderInputs>req.body;
+
+    const validateTranscation = await Transaction.findById(txnId);
+    if (validateTranscation === null) {
+      return NotFound("No Such tranction is happen!!", res);
+    }
+
+    if (validateTranscation.status.toLowerCase() === "failed") {
+      return NotFound("Transction is failed", res);
+    }
+
     const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
     const profile = await Customer.findById(customer._id);
     if (profile === null) return NotFound("No such profile", res);
-    const cart = <[OrderInputs]>req.body;
     let cartItems = Array();
     let netAmount = 0.0;
     let vendorId;
     const foods = await Food.find()
       .where("_id")
-      .in(cart.map((item) => item._id))
+      .in(items.map((item) => item._id))
       .exec();
     foods.map((food) => {
-      cart.map(({ _id, unit }) => {
+      items.map(({ _id, unit }) => {
         if (food._id == _id) {
           vendorId = food.vendorId;
           netAmount += food.price * unit;
@@ -447,14 +458,11 @@ export const CreateOrder = async (
         vendorId,
         items: cartItems,
         totalAmount: netAmount,
+        paidAmount: amount,
         orderDate: new Date(),
-        paidThrough: "COD",
-        paymentResponse: "",
         orderStauts: "Waiting",
         remarks: "",
         deliveryId: "",
-        appliedOffers: false,
-        offerId: null,
         readyTime: 45,
       });
       if (currentOrder) {
@@ -462,8 +470,15 @@ export const CreateOrder = async (
       }
     }
     profile.cart = [] as any;
-    await profile?.save();
-    ReturnData({ profile }, res);
+    await profile.save();
+
+    vendorId ? (validateTranscation.vendorId = vendorId) : "";
+    validateTranscation.orderId = orderId;
+    validateTranscation.status = "CONFIRMED";
+
+    await validateTranscation.save();
+
+    ReturnData({ profile, validateTranscation }, res);
   } catch (err: any) {
     return res.status(500).json({
       error: true,
@@ -515,5 +530,72 @@ export const GetOrder = async (
       error: true,
       message: err.message,
     });
+  }
+};
+
+export const VerifyOffer = async (req: Request, res: Response) => {
+  try {
+    const offerId = req.params.id;
+    const customer = req.user;
+
+    if (customer === undefined) {
+      return AuthenticateError("User is Not Authorize", res);
+    }
+
+    const appliedOffer = await OfferModel.findOne({
+      _id: offerId,
+      isActive: true,
+    });
+    if (appliedOffer === null) {
+      return NotFound("No Such offer is Present!!", res);
+    }
+
+    if (appliedOffer.promoType === "USER") {
+      // do some stuff
+    }
+
+    return ReturnData({ appliedOffer }, res);
+  } catch (err: any) {
+    return ServerError(err.message, res);
+  }
+};
+
+export const CreatePayment = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (user === undefined) {
+      return AuthenticateError("User is not authorize", res);
+    }
+    const { amount, paymentMode, offerId } = req.body;
+    let payableAmount = Number(amount);
+
+    if (offerId) {
+      const appliedOffer = await OfferModel.findOne({
+        _id: offerId,
+        isActive: true,
+      });
+      if (appliedOffer === null) {
+        return NotFound("No such offer is present!!", res);
+      }
+      payableAmount = payableAmount - appliedOffer.offerAmount;
+    }
+
+    // perform payment gate way
+    //create record on transaction
+    const transaction = await Transaction.create({
+      customer: user._id,
+      vendorId: "",
+      orderId: "",
+      orderValue: payableAmount,
+      offerUsed: offerId || "NA",
+      status: "OPEN", // in case of cod it is open otherwise failed and success
+      paymentMode: paymentMode,
+      paymentResponse: "Payment is Cash on Delivery",
+    });
+    // return transaction id
+
+    return ReturnData({ transaction }, res);
+  } catch (err: any) {
+    return ServerError(err.message, res);
   }
 };
