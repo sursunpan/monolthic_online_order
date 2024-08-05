@@ -1,4 +1,4 @@
-import { AuthPayload } from "./dto/auth.dto";
+import { AuthPayload } from "./src/dto/auth.dto";
 
 declare global {
   namespace Express {
